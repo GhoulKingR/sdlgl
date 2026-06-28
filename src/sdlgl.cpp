@@ -77,6 +77,24 @@ bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
   return true;
 }
 
+static bool running = true;
+bool sdlgl::windowShouldClose() { return !running; }
+void sdlgl::setWindowShouldClose(bool val) { running = !val; }
+
+void sdlgl::pollEvent(std::function<void(SDL_Event&)> callback) {
+  SDL_Event event;
+  while (SDL_PollEvent(&event)) {
+    if (event.type == SDL_EVENT_QUIT) {
+      running = false;
+    } else if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
+               event.window.windowID == SDL_GetWindowID(*windowPtr)) {
+      running = false;
+    }
+
+    if (callback != nullptr) callback(event);
+  }
+}
+
 const char* sdlgl::geterror() { return errorText.c_str(); }
 void sdlgl::cleanup() {
   if (ctxPtr != nullptr) SDL_GL_DestroyContext(*ctxPtr);
