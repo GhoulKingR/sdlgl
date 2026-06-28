@@ -5,7 +5,7 @@ set(SDLGL_BUILD_EXAMPLES OFF)
 add_subdirectory(../../ library)
 
 add_executable(${PROJECT_NAME}
-    src/main.cpp
+    main.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
