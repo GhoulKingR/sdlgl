@@ -1,0 +1,85 @@
+#include <SDL3/SDL.h>
+#include <glad/glad.h>
+
+#include <cassert>
+#include <cstdlib>
+#include <sdlgl/sdlgl.hpp>
+#include <string>
+
+#include "SDL3/SDL_video.h"
+
+static std::string errorText = "";
+static int width;
+static int height;
+static SDL_Window** windowPtr = nullptr;
+static SDL_GLContext* ctxPtr = nullptr;
+
+bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
+                 const initOptions& options) {
+  width = options.width;
+  height = options.height;
+  assert(options.title != nullptr && "Title cannot be null");
+
+  if (!SDL_Init(options.initOptions)) {
+    errorText = "Error :: Failed to initialize SDL: ";
+    errorText += SDL_GetError();
+    return false;
+  }
+
+#if __APPLE__
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
+                      SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+#endif
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, options.glMajorVersion);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, options.glMinorVersion);
+  SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+
+  window = SDL_CreateWindow(options.title, width, height,
+                            SDL_WINDOW_OPENGL | options.windowOptions);
+  windowPtr = &window;
+
+  if (window == nullptr) {
+    errorText = "Error :: Failed to initialize SDl window: ";
+    errorText += SDL_GetError();
+    SDL_Quit();
+    return false;
+  }
+
+  ctx = SDL_GL_CreateContext(window);
+  ctxPtr = &ctx;
+  if (ctx == nullptr) {
+    errorText = "Error :: Failed to create GL context: {}";
+    errorText += SDL_GetError();
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return false;
+  }
+
+  SDL_GL_MakeCurrent(window, ctx);
+  SDL_GL_SetSwapInterval(options.vsync);
+  SDL_ShowWindow(window);
+
+  if (!gladLoadGLLoader(
+          reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
+    errorText = "Error :: Failed to initialize GLAD";
+    SDL_GL_DestroyContext(ctx);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return false;
+  }
+
+  glViewport(0, 0, width, height);
+  return true;
+}
+
+const char* sdlgl::geterror() { return errorText.c_str(); }
+void sdlgl::cleanup() {
+  if (ctxPtr != nullptr) SDL_GL_DestroyContext(*ctxPtr);
+  if (windowPtr != nullptr) SDL_DestroyWindow(*windowPtr);
+  SDL_Quit();
+}
