@@ -6,6 +6,7 @@
 #include <sdlgl/sdlgl.hpp>
 #include <string>
 
+#include "SDL3/SDL_events.h"
 #include "SDL3/SDL_video.h"
 
 static std::string errorText = "";
@@ -30,10 +31,16 @@ bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
                       SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 #endif
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, options.glProfile);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, options.glMajorVersion);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, options.glMinorVersion);
-  SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+
+  if (options.multisampler.enable) {
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS,
+                        options.multisampler.buffers);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES,
+                        options.multisampler.samples);
+  }
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
   SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -74,6 +81,9 @@ bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
   }
 
   glViewport(0, 0, width, height);
+  if (options.multisampler.enable) {
+    glEnable(GL_MULTISAMPLE);
+  }
   return true;
 }
 
@@ -89,12 +99,19 @@ void sdlgl::pollEvent(std::function<void(SDL_Event&)> callback) {
     } else if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
                event.window.windowID == SDL_GetWindowID(*windowPtr)) {
       running = false;
+    } else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+      SDL_GetWindowSizeInPixels(*windowPtr, &width, &height);
+      glViewport(0, 0, width, height);
     }
 
     if (callback != nullptr) callback(event);
   }
 }
 
+void sdlgl::getViewport(int& w, int& h) {
+  w = width;
+  h = height;
+}
 const char* sdlgl::geterror() { return errorText.c_str(); }
 void sdlgl::cleanup() {
   if (ctxPtr != nullptr) SDL_GL_DestroyContext(*ctxPtr);
