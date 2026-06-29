@@ -3,8 +3,10 @@
 #include <cstdlib>
 #include <sdlgl/sdlgl.hpp>
 #include <sdlgl/utility.hpp>
+#include <vector>
 
 namespace shader = sdlgl::utility::shader;
+namespace vertices = sdlgl::utility::vertices;
 
 static SDL_Window* window;
 static SDL_GLContext ctx;
@@ -42,36 +44,20 @@ int main() {
   uint32_t indexCount;
 
   // clang-format off
-  float vertices[] = {
-      // vertices    // colors
-      -0.5f, -0.5f,  1.0f, 1.0f, 1.0f,
-       0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
-      -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
-       0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
-  };
-  uint32_t indices[] = {2, 0, 1, 1, 3, 2};
-  indexCount = sizeof(indices) / sizeof(indices[0]);
+  auto quad = vertices::load(
+      {
+          // vertices    // colors
+          -0.5f, -0.5f,  1.0f, 1.0f, 1.0f,
+           0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+          -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+           0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+      },
+      {2, 0, 1, 1, 3, 2},
+      {{0, 2, GL_FLOAT, GL_FALSE, 5*sizeof(float), (void*)0},
+       {1, 3, GL_FLOAT, GL_FALSE, 5*sizeof(float), (void*)(2 * sizeof(float))}}
+  );
   // clang-format on
 
-  // initialize buffer objects
-  glGenBuffers(1, &VBO);
-  glGenBuffers(1, &EBO);
-  glGenVertexArrays(1, &VAO);
-  glBindVertexArray(VAO);
-
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
-               GL_STATIC_DRAW);
-
-  // Setup the vertex data for the shader input values
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-  glEnableVertexAttribArray(0);  // aPos
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
-                        (void*)(2 * sizeof(float)));
-  glEnableVertexAttribArray(1);  // aColor
-  glBindVertexArray(0);
   uint32_t shdr = shader::load(vertexShader, fragmentShader);
   if (shdr == 0) {
     fprintf(stderr, "%s\n", sdlgl::geterror());
@@ -83,12 +69,12 @@ int main() {
     sdlgl::pollEvent(nullptr);
     shader::use(shdr);
 
-    // draw quad
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+    vertices::draw(quad);
     SDL_GL_SwapWindow(window);
   }
 
+  vertices::free(quad);
+  shader::free(shdr);
   sdlgl::cleanup();
   return EXIT_SUCCESS;
 }

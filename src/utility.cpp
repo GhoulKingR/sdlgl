@@ -1,11 +1,14 @@
 #include <glad/glad.h>
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <glm/gtc/type_ptr.hpp>
 #include <sdlgl/utility.hpp>
 #include <string>
+#include <utility>
+#include <vector>
 
 extern std::string _sdlglInternalErrorText;
 
@@ -95,4 +98,156 @@ void sdlgl::utility::shader::setFloat(uint32_t program, const char* name,
                                       float data) {
   assert(name != nullptr);
   glUniform1f(glGetUniformLocation(program, name), data);
+}
+
+struct BufferObject {
+  bool active = false;
+  uint32_t VBO = 0;
+  uint32_t EBO = 0;
+  uint32_t VAO = 0;
+  size_t size = 0;
+
+  BufferObject() = default;
+  ~BufferObject() {
+    if (VBO) glDeleteBuffers(1, &VBO);
+    if (VAO) glDeleteBuffers(1, &VAO);
+    if (EBO) glDeleteBuffers(1, &EBO);
+  }
+
+  BufferObject(const BufferObject&) = delete;
+  BufferObject operator=(const BufferObject&) = delete;
+  BufferObject(BufferObject&& obj) {
+    VBO = obj.VBO;
+    VAO = obj.VAO;
+    EBO = obj.EBO;
+    size = obj.size;
+    active = obj.active;
+    obj.VBO = 0;
+    obj.VAO = 0;
+    obj.EBO = 0;
+    obj.active = false;
+  }
+
+  BufferObject& operator=(BufferObject&& obj) {
+    VBO = obj.VBO;
+    VAO = obj.VAO;
+    EBO = obj.EBO;
+    size = obj.size;
+    active = obj.active;
+    obj.VBO = 0;
+    obj.VAO = 0;
+    obj.EBO = 0;
+    obj.active = false;
+    return *this;
+  }
+
+  void reset() {
+    if (VBO) glDeleteBuffers(1, &VBO);
+    if (VAO) glDeleteBuffers(1, &VAO);
+    if (EBO) glDeleteBuffers(1, &EBO);
+    VBO = 0;
+    VAO = 0;
+    EBO = 0;
+    active = false;
+  }
+};
+static std::vector<BufferObject> objects;
+static uint32_t openSpace = 0;
+
+uint32_t sdlgl::utility::vertices::load(
+    const std::vector<float>& vertices, const std::vector<uint32_t>& indices,
+    const std::vector<attributes>& attribs) {
+  BufferObject obj;
+  glGenBuffers(1, &obj.VBO);
+  glGenBuffers(1, &obj.EBO);
+  glGenVertexArrays(1, &obj.VAO);
+  glBindVertexArray(obj.VAO);
+
+  glBindBuffer(GL_ARRAY_BUFFER, obj.VBO);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]),
+               vertices.data(), GL_STATIC_DRAW);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obj.EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(indices[0]),
+               indices.data(), GL_STATIC_DRAW);
+  obj.size = indices.size();
+  obj.active = true;
+
+  for (auto& att : attribs) {
+    glVertexAttribPointer(att.index, att.size, att.type, att.normalize,
+                          att.stride, att.pointer);
+    glEnableVertexAttribArray(att.index);
+  }
+  glBindVertexArray(0);
+
+  if (openSpace > 0) {
+    for (uint32_t i = 0; i < objects.size(); i++) {
+      auto& o = objects[i];
+      if (o.active) continue;
+
+      o = std::move(obj);
+      openSpace--;
+      return i + 1;
+    }
+  } else {
+    objects.push_back(std::move(obj));
+    return objects.size();
+  }
+
+  return 0;
+}
+
+uint32_t sdlgl::utility::vertices::load(
+    const std::vector<float>& vertices,
+    const std::vector<attributes>& attribs) {
+  BufferObject obj;
+  glGenBuffers(1, &obj.VBO);
+  glGenVertexArrays(1, &obj.VAO);
+  glBindVertexArray(obj.VAO);
+
+  glBindBuffer(GL_ARRAY_BUFFER, obj.VBO);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]),
+               vertices.data(), GL_STATIC_DRAW);
+  obj.size = vertices.size();
+  obj.active = true;
+
+  for (auto& att : attribs) {
+    glVertexAttribPointer(att.index, att.size, att.type, att.normalize,
+                          att.stride, att.pointer);
+    glEnableVertexAttribArray(att.index);
+  }
+  glBindVertexArray(0);
+
+  if (openSpace > 0) {
+    for (uint32_t i = 0; i < objects.size(); i++) {
+      auto& o = objects[i];
+      if (o.active) continue;
+
+      o = std::move(obj);
+      openSpace--;
+      return i + 1;
+    }
+  } else {
+    objects.push_back(std::move(obj));
+    return objects.size();
+  }
+
+  return 0;
+}
+
+void sdlgl::utility::vertices::draw(uint32_t obj) {
+  assert(obj > 0 && obj <= objects.size() && "Invalid object");
+  auto& o = objects[obj - 1];
+  assert(o.active && "Invalid object");
+
+  glBindVertexArray(o.VAO);
+  if (o.EBO) {
+    glDrawElements(GL_TRIANGLES, o.size, GL_UNSIGNED_INT, 0);
+  } else {
+    glDrawArrays(GL_TRIANGLES, 0, o.size);
+  }
+}
+
+void sdlgl::utility::vertices::free(uint32_t obj) {
+  assert(obj > 0 && obj <= objects.size() && "Invalid object");
+  objects[obj - 1].reset();
 }
