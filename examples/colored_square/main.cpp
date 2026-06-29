@@ -73,6 +73,10 @@ int main() {
   glEnableVertexAttribArray(1);  // aColor
   glBindVertexArray(0);
   uint32_t shdr = shader::load(vertexShader, fragmentShader);
+  if (shdr == 0) {
+    fprintf(stderr, "%s\n", sdlgl::geterror());
+    return EXIT_FAILURE;
+  }
 
   // main loop
   while (!sdlgl::windowShouldClose()) {
