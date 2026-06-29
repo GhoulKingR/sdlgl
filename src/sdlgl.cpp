@@ -8,7 +8,7 @@
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_video.h"
 
-static std::string errorText = "";
+std::string _sdlglInternalErrorText = "";
 static int width;
 static int height;
 static SDL_Window** windowPtr = nullptr;
@@ -20,9 +20,9 @@ bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
   height = options.height;
   assert(options.title != nullptr && "Title cannot be null");
 
-  if (!SDL_Init(options.initOptions)) {
-    errorText = "Error :: Failed to initialize SDL: ";
-    errorText += SDL_GetError();
+  if (!SDL_Init(SDL_INIT_VIDEO | options.initOptions)) {
+    _sdlglInternalErrorText = "Error :: Failed to initialize SDL: ";
+    _sdlglInternalErrorText += SDL_GetError();
     return false;
   }
 
@@ -50,8 +50,8 @@ bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
   windowPtr = &window;
 
   if (window == nullptr) {
-    errorText = "Error :: Failed to initialize SDl window: ";
-    errorText += SDL_GetError();
+    _sdlglInternalErrorText = "Error :: Failed to initialize SDl window: ";
+    _sdlglInternalErrorText += SDL_GetError();
     SDL_Quit();
     return false;
   }
@@ -59,8 +59,8 @@ bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
   ctx = SDL_GL_CreateContext(window);
   ctxPtr = &ctx;
   if (ctx == nullptr) {
-    errorText = "Error :: Failed to create GL context: {}";
-    errorText += SDL_GetError();
+    _sdlglInternalErrorText = "Error :: Failed to create GL context: {}";
+    _sdlglInternalErrorText += SDL_GetError();
     SDL_DestroyWindow(window);
     SDL_Quit();
     return false;
@@ -71,7 +71,7 @@ bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
   SDL_ShowWindow(window);
 
   if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
-    errorText = "Error :: Failed to initialize GLAD";
+    _sdlglInternalErrorText = "Error :: Failed to initialize GLAD";
     SDL_GL_DestroyContext(ctx);
     SDL_DestroyWindow(window);
     SDL_Quit();
@@ -109,7 +109,7 @@ void sdlgl::getViewport(int& w, int& h) {
   w = width;
   h = height;
 }
-const char* sdlgl::geterror() { return errorText.c_str(); }
+const char* sdlgl::geterror() { return _sdlglInternalErrorText.c_str(); }
 void sdlgl::cleanup() {
   if (ctxPtr != nullptr) SDL_GL_DestroyContext(*ctxPtr);
   if (windowPtr != nullptr) SDL_DestroyWindow(*windowPtr);

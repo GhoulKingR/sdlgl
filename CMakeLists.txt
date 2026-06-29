@@ -11,6 +11,7 @@ else()
 
     add_library(${PROJECT_NAME} STATIC
         src/sdlgl.cpp
+        src/utility.cpp
         lib/glad.c
     )
 
