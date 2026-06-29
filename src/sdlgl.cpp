@@ -1,5 +1,4 @@
 #include <SDL3/SDL.h>
-#include <glad/glad.h>
 
 #include <cassert>
 #include <cstdlib>
@@ -71,8 +70,7 @@ bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
   SDL_GL_SetSwapInterval(options.vsync);
   SDL_ShowWindow(window);
 
-  if (!gladLoadGLLoader(
-          reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
+  if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
     errorText = "Error :: Failed to initialize GLAD";
     SDL_GL_DestroyContext(ctx);
     SDL_DestroyWindow(window);
@@ -81,9 +79,8 @@ bool sdlgl::init(SDL_Window*& window, SDL_GLContext& ctx,
   }
 
   glViewport(0, 0, width, height);
-  if (options.multisampler.enable) {
-    glEnable(GL_MULTISAMPLE);
-  }
+  if (options.multisampler.enable) glEnable(GL_MULTISAMPLE);
+  if (options.depthTest) glEnable(GL_DEPTH_TEST);
   return true;
 }
 
