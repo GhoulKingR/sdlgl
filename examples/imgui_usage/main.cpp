@@ -1,4 +1,3 @@
-#include <glad/glad.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_impl_sdl3.h>
@@ -26,7 +25,6 @@ int main() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   auto& io = ImGui::GetIO();
-  io.ConfigWindowsMoveFromTitleBarOnly = true;
   ImGui_ImplSDL3_InitForOpenGL(window, ctx);
   ImGui_ImplOpenGL3_Init();
 
